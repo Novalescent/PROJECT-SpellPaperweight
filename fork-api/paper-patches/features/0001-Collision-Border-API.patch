@@ -1,0 +1,27 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: WarlordWeaponry <minecraft2013@cox.net>
+Date: Tue, 12 Aug 2025 21:28:49 -0400
+Subject: [PATCH] Collision Border API
+
+
+diff --git a/src/main/java/org/bukkit/entity/Entity.java b/src/main/java/org/bukkit/entity/Entity.java
+index 0aa51b777fd28444b53ccc74362798553954c52d..f5f864c220a91f63305130948ed25d7a4be0699f 100644
+--- a/src/main/java/org/bukkit/entity/Entity.java
++++ b/src/main/java/org/bukkit/entity/Entity.java
+@@ -14,6 +14,7 @@ import org.bukkit.Nameable;
+ import org.bukkit.Server;
+ import org.bukkit.Sound;
+ import org.bukkit.World;
++import org.bukkit.WorldBorder;
+ import org.bukkit.block.BlockFace;
+ import org.bukkit.block.PistonMoveReaction;
+ import org.bukkit.command.CommandSender;
+@@ -1261,4 +1262,8 @@ public interface Entity extends Metadatable, CommandSender, Nameable, Persistent
+      */
+     void broadcastHurtAnimation(@NotNull java.util.Collection<Player> players);
+     // Paper end - broadcast hurt animation
++
++    void setCollisionBorder(@javax.annotation.Nullable WorldBorder border);
++
++    @Nullable WorldBorder getCollisionBorder();
+ }

@@ -1,0 +1,50 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: WarlordWeaponry <minecraft2013@cox.net>
+Date: Tue, 12 Aug 2025 21:29:04 -0400
+Subject: [PATCH] Collision Border Paper Impl
+
+
+diff --git a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+index b38073628d3b1381ccc4e5c6c44b2b7ec8ba1273..b5e42890d6cebe9b42d0727c7a2a0f8c6788395f 100644
+--- a/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
++++ b/src/main/java/org/bukkit/craftbukkit/entity/CraftEntity.java
+@@ -42,6 +42,7 @@ import org.bukkit.Location;
+ import org.bukkit.Server;
+ import org.bukkit.Sound;
+ import org.bukkit.World;
++import org.bukkit.WorldBorder;
+ import org.bukkit.block.BlockFace;
+ import org.bukkit.block.PistonMoveReaction;
+ import org.bukkit.craftbukkit.CraftServer;
+@@ -107,6 +108,8 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+     };
+     // Paper end - Folia schedulers
+ 
++    private WorldBorder collisionBorder;
++
+     public CraftEntity(final CraftServer server, final Entity entity) {
+         this.server = server;
+         this.entity = entity;
+@@ -1333,4 +1336,22 @@ public abstract class CraftEntity implements org.bukkit.entity.Entity {
+         return this.entity.get(io.papermc.paper.datacomponent.PaperDataComponentType.bukkitToMinecraft(type)) != null;
+     }
+ 
++    @Override
++    public void setCollisionBorder(@Nullable WorldBorder border) {
++        net.minecraft.world.level.border.WorldBorder handleBorder = null;
++        if (border != null) {
++            handleBorder = new net.minecraft.world.level.border.WorldBorder();
++            handleBorder.setCenter(border.getCenter().getX(), border.getCenter().getZ());
++            handleBorder.setSize(border.getSize());
++        }
++
++        this.entity.setCollisionBorder(handleBorder);
++        collisionBorder = border;
++    }
++
++    @Override
++    public @Nullable WorldBorder getCollisionBorder() {
++        return collisionBorder;
++    }
++
+ }

@@ -1,0 +1,167 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: WarlordWeaponry <minecraft2013@cox.net>
+Date: Tue, 12 Aug 2025 21:29:39 -0400
+Subject: [PATCH] Collision Border NMS Impl
+
+
+diff --git a/net/minecraft/world/entity/Entity.java b/net/minecraft/world/entity/Entity.java
+index dbf498e194b6af248ecdf06da697cfa42da467ff..f967bf94bc2a30ad2c254db95225474be35c9458 100644
+--- a/net/minecraft/world/entity/Entity.java
++++ b/net/minecraft/world/entity/Entity.java
+@@ -1,5 +1,6 @@
+ package net.minecraft.world.entity;
+ 
++import ca.spottedleaf.moonrise.patches.collisions.CollisionUtil;
+ import com.google.common.collect.ImmutableList;
+ import com.google.common.collect.Lists;
+ import com.google.common.collect.Sets;
+@@ -391,6 +392,8 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+     private int sectionZ = Integer.MIN_VALUE;
+     private boolean updatingSectionStatus;
+ 
++    private @Nullable WorldBorder collisionBorder = null;
++
+     @Override
+     public final boolean moonrise$isHardColliding() {
+         return this.isHardColliding;
+@@ -1517,6 +1520,12 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+             this.level, (Entity)(Object)this, initialCollisionBox, potentialCollisionsVoxel, potentialCollisionsBB,
+             ca.spottedleaf.moonrise.patches.collisions.CollisionUtil.COLLISION_FLAG_CHECK_BORDER, null
+         );
++
++        if (collisionBorder != null && CollisionUtil.isCollidingWithBorder(collisionBorder, initialCollisionBox)
++                && collisionBorder.isInsideCloseToBorder(this, initialCollisionBox)) {
++            potentialCollisionsVoxel.add(collisionBorder.getCollisionShape());
++        }
++
+         potentialCollisionsBB.addAll(entityAABBs);
+         final Vec3 collided = ca.spottedleaf.moonrise.patches.collisions.CollisionUtil.performCollisions(movement, currentBox, potentialCollisionsVoxel, potentialCollisionsBB);
+ 
+@@ -5364,4 +5373,8 @@ public abstract class Entity implements SyncedDataHolder, Nameable, EntityAccess
+         return ((ServerLevel) this.level()).isPositionEntityTicking(this.blockPosition());
+     }
+     // Paper end - Expose entity id counter
++
++    public void setCollisionBorder(WorldBorder border) {
++        this.collisionBorder = border;
++    }
+ }
+diff --git a/net/minecraft/world/entity/monster/Spider.java b/net/minecraft/world/entity/monster/Spider.java
+index 60c4ac37bb491af13f9f9bf730b85bbe544cf81d..a550bb179877f7ee1ba0a47227149d8ef635a673 100644
+--- a/net/minecraft/world/entity/monster/Spider.java
++++ b/net/minecraft/world/entity/monster/Spider.java
+@@ -78,9 +78,6 @@ public class Spider extends Monster {
+     @Override
+     public void tick() {
+         super.tick();
+-        if (!this.level().isClientSide) {
+-            this.setClimbing(this.horizontalCollision && (this.level().paperConfig().entities.behavior.allowSpiderWorldBorderClimbing || !(io.papermc.paper.FeatureHooks.isSpiderCollidingWithWorldBorder(this) && this.level().getWorldBorder().isInsideCloseToBorder(this, this.getBoundingBox())))); // Paper - Add config option for spider worldborder climbing (Inflate by +EPSILON as collision will just barely place us outside border)
+-        }
+     }
+ 
+     public static AttributeSupplier.Builder createAttributes() {
+diff --git a/net/minecraft/world/level/block/Blocks.java b/net/minecraft/world/level/block/Blocks.java
+index ff2743d808f3c309bf098b98a6fcba7d019f54c1..8f95cac4ab21d89495f806e37321553a8451c90b 100644
+--- a/net/minecraft/world/level/block/Blocks.java
++++ b/net/minecraft/world/level/block/Blocks.java
+@@ -566,19 +566,19 @@ public class Blocks {
+         "stripped_mangrove_wood", RotatedPillarBlock::new, logProperties(MapColor.COLOR_RED, MapColor.COLOR_RED, SoundType.WOOD)
+     );
+     public static final Block OAK_LEAVES = register(
+-        "oak_leaves", properties -> new TintedParticleLeavesBlock(0.01F, properties), leavesProperties(SoundType.GRASS)
++        "oak_leaves", properties -> new TintedParticleLeavesBlock(0.06F, properties), leavesProperties(SoundType.GRASS)
+     );
+     public static final Block SPRUCE_LEAVES = register(
+-        "spruce_leaves", properties -> new TintedParticleLeavesBlock(0.01F, properties), leavesProperties(SoundType.GRASS)
++        "spruce_leaves", properties -> new TintedParticleLeavesBlock(0.06F, properties), leavesProperties(SoundType.GRASS)
+     );
+     public static final Block BIRCH_LEAVES = register(
+-        "birch_leaves", properties -> new TintedParticleLeavesBlock(0.01F, properties), leavesProperties(SoundType.GRASS)
++        "birch_leaves", properties -> new TintedParticleLeavesBlock(0.06F, properties), leavesProperties(SoundType.GRASS)
+     );
+     public static final Block JUNGLE_LEAVES = register(
+-        "jungle_leaves", properties -> new TintedParticleLeavesBlock(0.01F, properties), leavesProperties(SoundType.GRASS)
++        "jungle_leaves", properties -> new TintedParticleLeavesBlock(0.06F, properties), leavesProperties(SoundType.GRASS)
+     );
+     public static final Block ACACIA_LEAVES = register(
+-        "acacia_leaves", properties -> new TintedParticleLeavesBlock(0.01F, properties), leavesProperties(SoundType.GRASS)
++        "acacia_leaves", properties -> new TintedParticleLeavesBlock(0.06F, properties), leavesProperties(SoundType.GRASS)
+     );
+     public static final Block CHERRY_LEAVES = register(
+         "cherry_leaves",
+@@ -597,11 +597,11 @@ public class Blocks {
+             .isRedstoneConductor(Blocks::never)
+     );
+     public static final Block DARK_OAK_LEAVES = register(
+-        "dark_oak_leaves", properties -> new TintedParticleLeavesBlock(0.01F, properties), leavesProperties(SoundType.GRASS)
++        "dark_oak_leaves", properties -> new TintedParticleLeavesBlock(0.06F, properties), leavesProperties(SoundType.GRASS)
+     );
+     public static final Block PALE_OAK_LEAVES = register(
+         "pale_oak_leaves",
+-        properties -> new UntintedParticleLeavesBlock(0.02F, ParticleTypes.PALE_OAK_LEAVES, properties),
++        properties -> new UntintedParticleLeavesBlock(0.06F, ParticleTypes.PALE_OAK_LEAVES, properties),
+         BlockBehaviour.Properties.of()
+             .mapColor(MapColor.METAL)
+             .strength(0.2F)
+@@ -616,16 +616,16 @@ public class Blocks {
+             .isRedstoneConductor(Blocks::never)
+     );
+     public static final Block MANGROVE_LEAVES = register(
+-        "mangrove_leaves", properties -> new MangroveLeavesBlock(0.01F, properties), leavesProperties(SoundType.GRASS)
++        "mangrove_leaves", properties -> new MangroveLeavesBlock(0.06F, properties), leavesProperties(SoundType.GRASS)
+     );
+     public static final Block AZALEA_LEAVES = register(
+         "azalea_leaves",
+-        properties -> new UntintedParticleLeavesBlock(0.01F, ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, -9399763), properties),
++        properties -> new UntintedParticleLeavesBlock(0.06F, ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, -9399763), properties),
+         leavesProperties(SoundType.AZALEA_LEAVES)
+     );
+     public static final Block FLOWERING_AZALEA_LEAVES = register(
+         "flowering_azalea_leaves",
+-        properties -> new UntintedParticleLeavesBlock(0.01F, ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, -9399763), properties),
++        properties -> new UntintedParticleLeavesBlock(0.06F, ColorParticleOption.create(ParticleTypes.TINTED_LEAVES, -9399763), properties),
+         leavesProperties(SoundType.AZALEA_LEAVES)
+     );
+     public static final Block SPONGE = register(
+diff --git a/net/minecraft/world/level/block/FallingBlock.java b/net/minecraft/world/level/block/FallingBlock.java
+index 4fa238d1cd6b19f16c0d0a8a9a913e9e42debbed..49ef733033e20a35acbfc95db1fd5977584e477e 100644
+--- a/net/minecraft/world/level/block/FallingBlock.java
++++ b/net/minecraft/world/level/block/FallingBlock.java
+@@ -47,10 +47,7 @@ public abstract class FallingBlock extends Block implements Fallable {
+ 
+     @Override
+     protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource random) {
+-        if (isFree(level.getBlockState(pos.below())) && pos.getY() >= level.getMinY()) {
+-            FallingBlockEntity fallingBlockEntity = FallingBlockEntity.fall(level, pos, state);
+-            this.falling(fallingBlockEntity);
+-        }
++
+     }
+ 
+     protected void falling(FallingBlockEntity entity) {
+diff --git a/net/minecraft/world/level/pathfinder/WalkNodeEvaluator.java b/net/minecraft/world/level/pathfinder/WalkNodeEvaluator.java
+index 9e6b2bbc1f83d32d0332f036be4f1a0e18b826bf..148e77492313d4438babae0b1246644bc91b451d 100644
+--- a/net/minecraft/world/level/pathfinder/WalkNodeEvaluator.java
++++ b/net/minecraft/world/level/pathfinder/WalkNodeEvaluator.java
+@@ -406,12 +406,6 @@ public class WalkNodeEvaluator extends NodeEvaluator {
+                         pathType = PathType.BLOCKED;
+                     }
+ 
+-                    if (pathType == PathType.RAIL
+-                        && this.getPathType(context, blockPos.getX(), blockPos.getY(), blockPos.getZ()) != PathType.RAIL
+-                        && this.getPathType(context, blockPos.getX(), blockPos.getY() - 1, blockPos.getZ()) != PathType.RAIL) {
+-                        pathType = PathType.UNPASSABLE_RAIL;
+-                    }
+-
+                     set.add(pathType);
+                 }
+             }
+@@ -512,7 +506,7 @@ public class WalkNodeEvaluator extends NodeEvaluator {
+                     return doorBlock.type().canOpenByHand() ? PathType.DOOR_WOOD_CLOSED : PathType.DOOR_IRON_CLOSED;
+                 }
+             } else if (block instanceof BaseRailBlock) {
+-                return PathType.RAIL;
++                return PathType.OPEN;
+             } else if (block instanceof LeavesBlock) {
+                 return PathType.LEAVES;
+             } else if (!blockState.is(BlockTags.FENCES)
